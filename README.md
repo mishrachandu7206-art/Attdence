@@ -22,4 +22,4 @@ npm install
 npm run dev 
 ```
 
-Open `http://localhost:3000/teacher.html` and `http://localhost:3000/student.html`.
+Open `http://localhost:3000/teacher._loginhtml` and `http://localhost:3000/student.html`.
