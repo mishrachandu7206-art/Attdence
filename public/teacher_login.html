@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Teacher Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 p-6">
+    <div class="max-w-md mx-auto bg-white p-6 rounded shadow">
+      <h1 class="text-xl font-bold mb-4">Teacher Login / Register</h1>
+
+      <div>
+        <h2 class="font-semibold">Register</h2>
+        <input id="regName" class="border p-2 w-full mt-2" placeholder="Name" />
+        <input id="regEmail" class="border p-2 w-full mt-2" placeholder="Email" />
+        <input id="regPassword" type="password" class="border p-2 w-full mt-2" placeholder="Password" />
+        <button id="doRegister" class="bg-green-600 text-white px-4 py-2 mt-3 rounded">Register</button>
+      </div>
+
+      <hr class="my-4" />
+
+      <div>
+        <h2 class="font-semibold">Login</h2>
+        <input id="loginEmail" class="border p-2 w-full mt-2" placeholder="Email" />
+        <input id="loginPassword" type="password" class="border p-2 w-full mt-2" placeholder="Password" />
+        <button id="doLogin" class="bg-blue-600 text-white px-4 py-2 mt-3 rounded">Login</button>
+      </div>
+    </div>
+
+    <script>
+      const api = '/api';
+      document.getElementById('doRegister').addEventListener('click', async () => {
+        const name = document.getElementById('regName').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+        if (!name || !email || !password) return alert('Provide name, email and password');
+        const res = await fetch(api + '/teachers/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, email, password }) });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Registered. Please login now.');
+        } else {
+          alert(data.error || 'Register failed');
+        }
+      });
+
+      document.getElementById('doLogin').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        if (!email || !password) return alert('Provide email and password');
+        const res = await fetch(api + '/teachers/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('token', data.token);
+          window.location.href = '/teacher.html';
+        } else {
+          alert(data.error || 'Login failed');
+        }
+      });
+    </script>
+  </body>
+</html>

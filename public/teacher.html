@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Teacher - Attendance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-2xl font-bold mb-4">Teacher Dashboard</h1>
+
+      <section class="bg-white p-4 rounded shadow mb-4">
+        <h2 class="font-semibold">Add Class</h2>
+        <div class="mt-2 flex gap-2">
+          <input id="className" class="border p-2 flex-1" placeholder="Class name" />
+          <button id="addClass" class="bg-blue-600 text-white px-4 py-2 rounded">Add</button>
+        </div>
+        <div id="classesList" class="mt-3"></div>
+      </section>
+
+      <section class="bg-white p-4 rounded shadow mb-4">
+        <h2 class="font-semibold">Add Student</h2>
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <select id="studentClass" class="border p-2 col-span-1"></select>
+          <input id="studentName" class="border p-2 col-span-1" placeholder="Student name" />
+          <input id="studentRoll" class="border p-2 col-span-1" placeholder="Roll number" />
+        </div>
+        <div class="mt-2">
+          <button id="addStudent" class="bg-green-600 text-white px-4 py-2 rounded">Add Student</button>
+        </div>
+        <div id="studentsList" class="mt-3"></div>
+      </section>
+
+      <section class="bg-white p-4 rounded shadow mb-4">
+        <h2 class="font-semibold">Take / Update Attendance</h2>
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <select id="attClass" class="border p-2 col-span-1"></select>
+          <input id="attDate" type="date" class="border p-2 col-span-1" />
+          <button id="loadStudents" class="bg-indigo-600 text-white px-4 py-2 rounded">Load</button>
+        </div>
+        <form id="attendanceForm" class="mt-3 bg-gray-50 p-3 rounded hidden">
+          <div id="attStudents" class="space-y-2"></div>
+          <div class="mt-2">
+            <button class="bg-blue-600 text-white px-4 py-2 rounded" id="saveAttendance">Save Attendance</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <script>
+      const api = '/api';
+      function getAuthHeaders(extra = {}) {
+        const headers = Object.assign({}, extra);
+        const token = localStorage.getItem('token');
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        return headers;
+      }
+
+      function isLoggedIn() {
+        return !!localStorage.getItem('token');
+      }
+
+      function updateAuthUI() {
+        const box = document.getElementById('authBox');
+        if (!isLoggedIn()) {
+          box.innerHTML = '<a href="/teacher_login.html" class="text-sm text-blue-600">Login / Register</a>';
+        } else {
+          box.innerHTML = '<button id="logoutBtn" class="text-sm text-red-600">Logout</button>';
+          document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('token'); updateAuthUI(); });
+        }
+      }
+
+      async function fetchClasses() {
+        const res = await fetch(api + '/classes');
+        const data = await res.json();
+        const sel1 = document.getElementById('studentClass');
+        const sel2 = document.getElementById('attClass');
+        sel1.innerHTML = '';
+        sel2.innerHTML = '';
+        const list = document.getElementById('classesList');
+        list.innerHTML = '';
+        data.forEach(c => {
+          const opt = document.createElement('option'); opt.value = c._id; opt.textContent = c.name;
+          sel1.appendChild(opt.cloneNode(true));
+          sel2.appendChild(opt.cloneNode(true));
+          const div = document.createElement('div'); div.textContent = c.name; list.appendChild(div);
+        });
+      }
+
+      document.getElementById('addClass').addEventListener('click', async () => {
+        const name = document.getElementById('className').value.trim();
+        if (!name) return alert('Enter class name');
+        await fetch(api + '/classes', { method: 'POST', headers: getAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({ name }) });
+        document.getElementById('className').value = '';
+        fetchClasses();
+      });
+
+      document.getElementById('addStudent').addEventListener('click', async () => {
+        const name = document.getElementById('studentName').value.trim();
+        const roll = document.getElementById('studentRoll').value.trim();
+        const classId = document.getElementById('studentClass').value;
+        if (!name || !classId) return alert('Provide student name and class');
+        await fetch(api + '/students', { method: 'POST', headers: getAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({ name, roll, classId }) });
+        document.getElementById('studentName').value = ''; document.getElementById('studentRoll').value = '';
+        loadStudentsForClass(classId);
+      });
+
+      async function loadStudentsForClass(classId) {
+        const res = await fetch(api + '/students?classId=' + classId);
+        const students = await res.json();
+        const container = document.getElementById('studentsList');
+        container.innerHTML = '<h3 class="font-semibold">Students</h3>';
+        students.forEach(s => {
+          const div = document.createElement('div'); div.className = 'p-1'; div.textContent = `${s.name} (${s.roll || '-'})`; container.appendChild(div);
+        });
+      }
+
+      document.getElementById('studentClass').addEventListener('change', (e) => loadStudentsForClass(e.target.value));
+
+      document.getElementById('loadStudents').addEventListener('click', async () => {
+        const classId = document.getElementById('attClass').value;
+        const date = document.getElementById('attDate').value;
+        if (!classId || !date) return alert('Select class and date');
+        const res = await fetch(api + '/students?classId=' + classId);
+        const students = await res.json();
+
+        // get existing attendance
+        const attRes = await fetch(api + '/attendance?classId=' + classId + '&date=' + date);
+        const records = await attRes.json();
+        const presentIds = records[0] ? records[0].present.map(p => p._id) : [];
+
+        const attStudents = document.getElementById('attStudents');
+        attStudents.innerHTML = '';
+        students.forEach(s => {
+          const id = s._id;
+          const row = document.createElement('div'); row.className = 'flex items-center gap-3';
+          const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = id; cb.checked = presentIds.includes(id);
+          const label = document.createElement('div'); label.textContent = s.name + ' (' + (s.roll || '-') + ')';
+          row.appendChild(cb); row.appendChild(label); attStudents.appendChild(row);
+        });
+        document.getElementById('attendanceForm').classList.remove('hidden');
+      });
+
+      document.getElementById('saveAttendance').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const classId = document.getElementById('attClass').value;
+        const date = document.getElementById('attDate').value;
+        const checked = Array.from(document.querySelectorAll('#attStudents input[type=checkbox]:checked')).map(i => i.value);
+        await fetch(api + '/attendance', { method: 'POST', headers: getAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({ classId, date, present: checked }) });
+        alert('Attendance saved');
+      });
+
+      // init
+      updateAuthUI();
+      fetchClasses();
+    </script>
+  </body>
+</html>
