@@ -5,16 +5,21 @@ Simple teacher/student attendance web app.
 Setup
 
 1. Copy `.env.example` to `.env` and set `MONGO_URI`.
-2. Install:
+```
+MONGO_URI=mongodb://localhost:27017/attendance_app
+PORT=3000
+
+```
+3. Install:
 
 ```
 npm install
 ```
 
-3. Start server:
+3. Start server: copy and paste in terminal
 
 ```
-npm start
+npm run dev 
 ```
 
 Open `http://localhost:3000/teacher.html` and `http://localhost:3000/student.html`.
