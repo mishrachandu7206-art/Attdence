@@ -1,4 +1,4 @@
-# Attendance App
+# Attendance App- By Anshul Kumar
 
 Simple teacher/student attendance web app.
 
